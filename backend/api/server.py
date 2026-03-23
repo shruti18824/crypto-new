@@ -56,14 +56,6 @@ app.mount("/reports", StaticFiles(directory=str(REPORTS_DIR)), name="reports")
 WEB_DIST_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
 if WEB_DIST_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(WEB_DIST_DIR / "assets")), name="assets")
-    
-    @app.get("/{full_path:path}")
-    async def serve_react_app(full_path: str):
-        # API routes are handled by the main app, everything else goes to index.html
-        if full_path.startswith("api/") or full_path.startswith("reports/"):
-             raise HTTPException(status_code=404)
-        return StaticFiles(directory=str(WEB_DIST_DIR), html=True).get_response("index.html", None)
-
 # Socket.io setup
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 socket_app = socketio.ASGIApp(sio, app)
@@ -975,6 +967,16 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     await close_mongo_connection()
+
+# React SPA Catch-all Route
+@app.get("/{full_path:path}")
+async def serve_react_app(request: Request, full_path: str):
+    # API routes are handled by the main app, everything else goes to index.html
+    if full_path.startswith("api/") or full_path.startswith("reports/"):
+         raise HTTPException(status_code=404)
+    if WEB_DIST_DIR.exists():
+        return await StaticFiles(directory=str(WEB_DIST_DIR), html=True).get_response("index.html", request.scope)
+    return {"status": "error", "message": "Frontend build not found"}
 
 if __name__ == "__main__":
     uvicorn.run(socket_app, host=API_HOST, port=API_PORT)
