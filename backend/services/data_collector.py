@@ -49,6 +49,17 @@ class CryptoDataCollector:
         try:
             time.sleep(self._rate_limit_delay)
             response = self.session.get(url, params=params, timeout=30)
+            
+            # Handle rate limiting (429) gracefully with a single retry
+            if response.status_code == 429:
+                wait_time = 30 # Default wait
+                if "Retry-After" in response.headers:
+                    try: wait_time = int(response.headers["Retry-After"])
+                    except: pass
+                logger.warning(f"⚠️ CoinGecko Rate Limit (429). Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+                response = self.session.get(url, params=params, timeout=30)
+            
             response.raise_for_status()
             return response.json()
         except Exception as e:

@@ -63,7 +63,7 @@ socket_app = socketio.ASGIApp(sio, app)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"])
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     """Root endpoint to verify API is running."""
     return {
