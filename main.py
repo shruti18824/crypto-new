@@ -129,8 +129,8 @@ def run_analysis():
         if "error" not in result:
             print(f"\n  🔮 {coin_id.upper()} Prediction (14 days)")
             print(f"     Current: {format_currency(result['current_price'])}")
-            print(f"     Predicted: {format_currency(result['predicted_price_final'])}")
-            print(f"     Change: {format_percentage(result['predicted_change_pct'])}")
+            print(f"     Predicted: {format_currency(result['predicted_price'])}")
+            print(f"     Change: {format_percentage(result.get('predicted_change_pct', 0))}")
             print(f"     Direction: {result['prediction_direction']}")
 
     # ---- Portfolio Optimization ----

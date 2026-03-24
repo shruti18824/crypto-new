@@ -54,30 +54,39 @@ class CryptoPricePredictor:
             logger.error(f"Error fetching data from yfinance: {e}")
             return pd.DataFrame()
 
+    def _format_prediction(self, prediction: Dict) -> Dict:
+        """Standardize prediction format for frontend and CLI."""
+        if "forecast" in prediction:
+            # Ensure 'predictions' list exists for Recharts
+            if "predictions" not in prediction:
+                prediction["predictions"] = [{"date": p["date"], "predicted_price": p["price"]} for p in prediction["forecast"]]
+            
+            # Ensure 'predicted_price' exists (use last forecast point)
+            if "predicted_price" not in prediction:
+                prediction["predicted_price"] = prediction["forecast"][-1]["price"]
+            
+            # Add derived metrics
+            current = prediction.get("current_price", 0)
+            if current > 0:
+                change_pct = (prediction["predicted_price"] / current - 1) * 100
+                prediction["predicted_change_pct"] = change_pct
+                prediction["prediction_direction"] = "Bullish" if change_pct > 2 else ("Bearish" if change_pct < -2 else "Neutral")
+            else:
+                prediction["predicted_change_pct"] = 0
+                prediction["prediction_direction"] = "Neutral"
+                
+        return prediction
+
     def predict_future_prices(self, df: pd.DataFrame, coin_id: str, 
                               model_type: str = "random_forest", 
                               days_ahead: int = 7) -> Dict:
         """Compatibility method for single-model prediction."""
-        # For now, we use the ensemble logic which included this model
-        # but filter for the specific model's output if needed.
-        # However, to meet the "Fix all errors" goal, we'll run the pipeline.
-        
-        # Check if models exist, if not, train
-        # (In a production system, this would be managed by a background task)
-        # For this refactor, we'll trigger a quick training if empty
         prediction = self.pipeline.get_prediction(df, coin_id, days_ahead)
         if "error" in prediction:
             self.pipeline.run_training_cycle(df, coin_id)
             prediction = self.pipeline.get_prediction(df, coin_id, days_ahead)
             
-        # Format for frontend compatibility (Ensure 'predictions' list exists for Recharts)
-        if "forecast" in prediction and "predictions" not in prediction:
-            prediction["predictions"] = [{"date": p["date"], "predicted_price": p["price"]} for p in prediction["forecast"]]
-            
-        if "forecast" in prediction and "predicted_price" not in prediction:
-            prediction["predicted_price"] = prediction["forecast"][-1]["price"]
-            
-        return prediction
+        return self._format_prediction(prediction)
 
     def ensemble_predict(self, df: pd.DataFrame, coin_id: str, days_ahead: int = 7) -> Dict:
         """Delegate to the modular pipeline ensemble."""
@@ -86,9 +95,4 @@ class CryptoPricePredictor:
             self.pipeline.run_training_cycle(df, coin_id)
             prediction = self.pipeline.get_prediction(df, coin_id, days_ahead)
             
-        # Format for frontend compatibility
-        if "forecast" in prediction:
-            prediction["predictions"] = [{"date": p["date"], "predicted_price": p["price"]} for p in prediction["forecast"]]
-            prediction["predicted_price"] = prediction["forecast"][-1]["price"]
-            
-        return prediction
+        return self._format_prediction(prediction)
