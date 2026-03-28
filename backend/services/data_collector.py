@@ -52,7 +52,7 @@ class CryptoDataCollector:
             
             # Handle rate limiting (429) gracefully with a single retry
             if response.status_code == 429:
-                wait_time = 30 # Default wait
+                wait_time = 60 # Increased wait for Render deployment
                 if "Retry-After" in response.headers:
                     try: wait_time = int(response.headers["Retry-After"])
                     except: pass

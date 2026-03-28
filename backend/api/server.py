@@ -821,6 +821,16 @@ async def ping():
     from database.mongo_connection import db as db_obj
     return {"status": "ok", "timestamp": datetime.utcnow(), "db_mock": db_obj.is_mock}
 
+@app.get("/api/health")
+@app.head("/api/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.utcnow()}
+
+@app.get("/")
+@app.head("/")
+async def root():
+    return {"status": "ok", "message": "AI Crypto Intelligence Platform Technical API"}
+
 @app.post("/api/exchange/sync", summary="Sync with exchange API")
 async def sync_exchange(exchange_id: str, api_keys: Dict, current_user: User = Depends(get_current_user)):
     try:
@@ -1013,7 +1023,7 @@ async def serve_react_app(request: Request, full_path: str):
     """Serve the React application for any non-API routes."""
     # API and reports routes should return 404 if not matched by their specific handlers
     if full_path.startswith("api/") or full_path.startswith("reports/"):
-         return {"status": "error", "message": f"Route {full_path} not found"}
+         raise HTTPException(404, f"Route {full_path} not found")
          
     # SPA Fallback: Serve index.html for all other routes
     if WEB_DIST_DIR.exists():
